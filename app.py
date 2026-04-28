@@ -916,3 +916,28 @@ def create_excel_bytes() -> bytes:
     wb.save(buffer)
     buffer.seek(0)
     return buffer.getvalue()
+
+# =========================
+# 出力
+# =========================
+
+st.markdown("---")
+st.header("4. Excel出力")
+st.info("ここからExcel作業手順書を出力できます。")
+
+if not st.session_state.selected_steps:
+    st.info("手順を選択するとExcel出力できます。")
+else:
+    excel_bytes = create_excel_bytes()
+
+    file_title = safe_value(st.session_state.manual_title).replace(" ", "_")
+    file_name = f"{datetime.now().strftime('%Y-%m-%d_%H%M')}_{file_title}.xlsx"
+
+    st.download_button(
+        label="Excel作業手順書を出力する",
+        data=excel_bytes,
+        file_name=file_name,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+        key="download_excel_bottom",
+    )
