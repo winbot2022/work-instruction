@@ -495,16 +495,25 @@ if st.session_state.selected_steps:
     st.markdown("---")
     st.subheader("2. 使用する手順を選択")
 
-    selected = st.multiselect(
-        "作業手順書に入れる手順を選択してください",
-        options=template_steps + [
-            x for x in st.session_state.selected_steps if x not in template_steps
-        ],
-        default=st.session_state.selected_steps,
-    )
+    st.caption("不要な手順はチェックを外してください。")
 
-    # 選択状態を反映
-    st.session_state.selected_steps = selected
+    all_step_options = template_steps + [
+        x for x in st.session_state.selected_steps if x not in template_steps
+    ]
+
+    new_selected_steps = []
+
+    for idx, step in enumerate(all_step_options, start=1):
+        checked = step in st.session_state.selected_steps
+
+        if st.checkbox(
+            f"{idx}. {step}",
+            value=checked,
+            key=f"step_select_{idx}_{step}",
+        ):
+            new_selected_steps.append(step)
+
+    st.session_state.selected_steps = new_selected_steps
 
     # step_details に存在しない手順があれば追加
     for step in st.session_state.selected_steps:
