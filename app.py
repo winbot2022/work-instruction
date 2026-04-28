@@ -560,3 +560,359 @@ with add_col2:
                 st.info("すでに追加されています。")
         else:
             st.warning("追加する手順を入力してください。")
+
+# =========================
+# 各手順の詳細入力
+# =========================
+
+if st.session_state.selected_steps:
+    st.markdown("---")
+    st.subheader("3. 各手順の詳細入力")
+
+    st.caption("写真、ポイント、注意事項、確認項目を必要に応じて設定してください。空欄でもExcel出力できます。")
+
+    for idx, step in enumerate(st.session_state.selected_steps, start=1):
+        if step not in st.session_state.step_details:
+            st.session_state.step_details[step] = {
+                "point": [],
+                "caution": [],
+                "check": [],
+                "free_point": "",
+                "free_caution": "",
+                "free_check": "",
+                "image": None,
+                "image_name": "",
+            }
+
+        detail = st.session_state.step_details[step]
+
+        with st.expander(f"手順{idx}：{step}", expanded=False):
+            uploaded_file = st.file_uploader(
+                "写真を選択または撮影",
+                type=["jpg", "jpeg", "png"],
+                key=f"image_{idx}_{step}",
+            )
+
+            if uploaded_file is not None:
+                detail["image"] = uploaded_file.getvalue()
+                detail["image_name"] = uploaded_file.name
+
+                try:
+                    preview_image = PILImage.open(io.BytesIO(detail["image"]))
+                    st.image(preview_image, caption="登録写真", use_container_width=True)
+                except Exception:
+                    st.warning("写真のプレビューに失敗しました。")
+
+            detail["point"] = st.multiselect(
+                "ポイント（選択）",
+                options=POINT_OPTIONS,
+                default=detail.get("point", []),
+                key=f"point_{idx}_{step}",
+            )
+
+            detail["free_point"] = st.text_input(
+                "ポイント（自由入力）",
+                value=detail.get("free_point", ""),
+                placeholder="例：赤丸部を基準面に当てる",
+                key=f"free_point_{idx}_{step}",
+            )
+
+            detail["caution"] = st.multiselect(
+                "注意事項（選択）",
+                options=CAUTION_OPTIONS,
+                default=detail.get("caution", []),
+                key=f"caution_{idx}_{step}",
+            )
+
+            detail["free_caution"] = st.text_input(
+                "注意事項（自由入力）",
+                value=detail.get("free_caution", ""),
+                placeholder="例：A面はキズ禁止",
+                key=f"free_caution_{idx}_{step}",
+            )
+
+            detail["check"] = st.multiselect(
+                "確認項目（選択）",
+                options=CHECK_OPTIONS,
+                default=detail.get("check", []),
+                key=f"check_{idx}_{step}",
+            )
+
+            detail["free_check"] = st.text_input(
+                "確認項目（自由入力）",
+                value=detail.get("free_check", ""),
+                placeholder="例：クランプピンに確実に当たっていること",
+                key=f"free_check_{idx}_{step}",
+            )
+
+            st.session_state.step_details[step] = detail
+
+# =========================
+# Excel出力
+# =========================
+
+def join_items(selected_items: List[str], free_text: str) -> str:
+    items = list(selected_items) if selected_items else []
+    if free_text and free_text.strip():
+        items.append(free_text.strip())
+    return "、".join(items)
+
+
+def add_cell(ws, row: int, col: int, value, fill=None, font=None, align=None, border=True):
+    cell = ws.cell(row=row, column=col, value=value)
+    if fill:
+        cell.fill = fill
+    if font:
+        cell.font = font
+    if align:
+        cell.alignment = align
+    if border:
+        cell.border = thin_border
+    return cell
+
+
+def create_excel_bytes() -> bytes:
+    wb = Workbook()
+
+    # =========================
+    # シート1：作業手順書
+    # =========================
+    ws = wb.active
+    ws.title = "作業手順書"
+
+    # ページ設定
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 1
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+
+    # 列幅
+    column_widths = {
+        "A": 5,
+        "B": 14,
+        "C": 34,
+        "D": 28,
+        "E": 28,
+        "F": 24,
+    }
+    for col, width in column_widths.items():
+        ws.column_dimensions[col].width = width
+
+    # タイトル
+    ws.merge_cells("A1:F1")
+    title = safe_value(st.session_state.manual_title)
+    add_cell(
+        ws,
+        1,
+        1,
+        f"作業手順書：{title}",
+        fill=title_fill,
+        font=Font(bold=True, size=16),
+        align=center_align,
+    )
+    ws.row_dimensions[1].height = 28
+
+    # 基本情報
+    info_rows = [
+        ("工程分類", safe_value(st.session_state.process_type), "対象設備", safe_value(st.session_state.equipment_name)),
+        ("製品名", safe_value(st.session_state.product_name), "品番", safe_value(st.session_state.part_number)),
+        ("図面番号", safe_value(st.session_state.drawing_number), "プログラム番号", safe_value(st.session_state.program_number)),
+        ("使用治具", safe_value(st.session_state.jig_name), "使用工具", safe_value(st.session_state.tool_name)),
+        ("作成者", safe_value(st.session_state.author), "改訂番号", safe_value(st.session_state.revision)),
+        ("作成日", datetime.now().strftime("%Y-%m-%d"), "承認", ""),
+    ]
+
+    start_row = 3
+    for idx, (k1, v1, k2, v2) in enumerate(info_rows, start=start_row):
+        add_cell(ws, idx, 1, k1, fill=thin_gray_fill, font=Font(bold=True), align=center_align)
+        add_cell(ws, idx, 2, v1, align=left_align)
+        add_cell(ws, idx, 3, k2, fill=thin_gray_fill, font=Font(bold=True), align=center_align)
+        add_cell(ws, idx, 4, v2, align=left_align)
+        ws.merge_cells(start_row=idx, start_column=4, end_row=idx, end_column=6)
+
+    # 手順表ヘッダー
+    header_row = 10
+    headers = ["No", "写真", "作業手順", "ポイント", "注意事項", "確認項目"]
+
+    for col_idx, header in enumerate(headers, start=1):
+        add_cell(
+            ws,
+            header_row,
+            col_idx,
+            header,
+            fill=header_fill,
+            font=Font(bold=True),
+            align=center_align,
+        )
+
+    # 手順データ
+    row = header_row + 1
+    image_files_for_photo_sheet = []
+
+    max_main_steps = 8  # 本体1ページ想定。多い場合は下に続く。
+
+    for idx, step in enumerate(st.session_state.selected_steps, start=1):
+        detail = st.session_state.step_details.get(step, {})
+
+        point_text = join_items(detail.get("point", []), detail.get("free_point", ""))
+        caution_text = join_items(detail.get("caution", []), detail.get("free_caution", ""))
+        check_text = join_items(detail.get("check", []), detail.get("free_check", ""))
+
+        add_cell(ws, row, 1, idx, align=center_align)
+        add_cell(ws, row, 2, "", align=center_align)
+        add_cell(ws, row, 3, step, align=top_left_align)
+        add_cell(ws, row, 4, point_text, align=top_left_align)
+        add_cell(ws, row, 5, caution_text, align=top_left_align)
+        add_cell(ws, row, 6, check_text, align=top_left_align)
+
+        ws.row_dimensions[row].height = 72
+
+        image_bytes = detail.get("image")
+        image_name = detail.get("image_name", "")
+
+        if image_bytes:
+            try:
+                img_for_excel = XLImage(io.BytesIO(image_bytes))
+                img_for_excel.width = 90
+                img_for_excel.height = 60
+                ws.add_image(img_for_excel, f"B{row}")
+
+                image_files_for_photo_sheet.append(
+                    {
+                        "no": idx,
+                        "step": step,
+                        "image": image_bytes,
+                        "image_name": image_name,
+                        "point": point_text,
+                        "caution": caution_text,
+                        "check": check_text,
+                    }
+                )
+            except Exception:
+                add_cell(ws, row, 2, "画像読込不可", align=center_align)
+
+        row += 1
+
+    # 印刷範囲
+    ws.print_area = f"A1:F{max(row - 1, header_row + 1)}"
+
+    # =========================
+    # シート2：写真集
+    # =========================
+    ws_photo = wb.create_sheet("写真集")
+
+    ws_photo.page_setup.orientation = "landscape"
+    ws_photo.page_setup.paperSize = ws_photo.PAPERSIZE_A4
+    ws_photo.page_setup.fitToWidth = 1
+    ws_photo.page_setup.fitToHeight = 0
+    ws_photo.sheet_properties.pageSetUpPr.fitToPage = True
+
+    ws_photo.column_dimensions["A"].width = 8
+    ws_photo.column_dimensions["B"].width = 48
+    ws_photo.column_dimensions["C"].width = 60
+
+    ws_photo.merge_cells("A1:C1")
+    add_cell(
+        ws_photo,
+        1,
+        1,
+        f"写真集：{title}",
+        fill=title_fill,
+        font=Font(bold=True, size=16),
+        align=center_align,
+    )
+    ws_photo.row_dimensions[1].height = 28
+
+    photo_header_row = 3
+    for col_idx, header in enumerate(["手順No", "写真", "説明・注意点"], start=1):
+        add_cell(
+            ws_photo,
+            photo_header_row,
+            col_idx,
+            header,
+            fill=header_fill,
+            font=Font(bold=True),
+            align=center_align,
+        )
+
+    photo_row = photo_header_row + 1
+
+    if image_files_for_photo_sheet:
+        for item in image_files_for_photo_sheet:
+            ws_photo.row_dimensions[photo_row].height = 180
+
+            add_cell(ws_photo, photo_row, 1, item["no"], align=center_align)
+            add_cell(ws_photo, photo_row, 2, "", align=center_align)
+
+            explanation = (
+                f"作業手順：{item['step']}\n"
+                f"ポイント：{item['point']}\n"
+                f"注意事項：{item['caution']}\n"
+                f"確認項目：{item['check']}"
+            )
+            add_cell(ws_photo, photo_row, 3, explanation, align=top_left_align)
+
+            try:
+                img_large = XLImage(io.BytesIO(item["image"]))
+                img_large.width = 320
+                img_large.height = 220
+                ws_photo.add_image(img_large, f"B{photo_row}")
+            except Exception:
+                add_cell(ws_photo, photo_row, 2, "画像読込不可", align=center_align)
+
+            photo_row += 1
+    else:
+        add_cell(ws_photo, photo_row, 1, "写真は登録されていません。", align=left_align)
+        ws_photo.merge_cells(start_row=photo_row, start_column=1, end_row=photo_row, end_column=3)
+
+    # =========================
+    # シート3：入力データ
+    # =========================
+    ws_data = wb.create_sheet("入力データ")
+
+    data_headers = [
+        "No",
+        "作業手順",
+        "ポイント",
+        "注意事項",
+        "確認項目",
+        "画像ファイル名",
+    ]
+
+    for col_idx, header in enumerate(data_headers, start=1):
+        add_cell(
+            ws_data,
+            1,
+            col_idx,
+            header,
+            fill=header_fill,
+            font=Font(bold=True),
+            align=center_align,
+        )
+
+    for idx, step in enumerate(st.session_state.selected_steps, start=1):
+        detail = st.session_state.step_details.get(step, {})
+        point_text = join_items(detail.get("point", []), detail.get("free_point", ""))
+        caution_text = join_items(detail.get("caution", []), detail.get("free_caution", ""))
+        check_text = join_items(detail.get("check", []), detail.get("free_check", ""))
+
+        values = [
+            idx,
+            step,
+            point_text,
+            caution_text,
+            check_text,
+            detail.get("image_name", ""),
+        ]
+
+        for col_idx, value in enumerate(values, start=1):
+            add_cell(ws_data, idx + 1, col_idx, value, align=top_left_align)
+
+    for col_idx in range(1, len(data_headers) + 1):
+        ws_data.column_dimensions[get_column_letter(col_idx)].width = 24
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
