@@ -342,3 +342,35 @@ CHECK_OPTIONS = [
     "良品置き場OK",
     "不良品識別OK",
 ]
+# =========================
+# セッション初期化
+# =========================
+def init_session_state() -> None:
+    defaults = {
+        "manual_title": "",
+        "process_type": "汎用テンプレート",
+        "equipment_name": "",
+        "product_name": "",
+        "part_number": "",
+        "drawing_number": "",
+        "program_number": "",
+        "jig_name": "",
+        "tool_name": "",
+        "author": "",
+        "revision": "Rev.0",
+        "selected_steps": [],
+        "extra_step_input": "",
+        "step_details": {},
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+init_session_state()
+
+
+def safe_value(value: str) -> str:
+    value = str(value).strip()
+    return value if value else "未設定"
