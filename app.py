@@ -385,6 +385,25 @@ def safe_filename(text: str) -> str:
     text = re.sub(r'[\\/:*?"<>|]', "_", text)
     return text
 
+def move_step_up(index: int) -> None:
+    """選択済み手順を1つ上へ移動する"""
+    if index <= 0:
+        return
+
+    steps = st.session_state.selected_steps
+    steps[index - 1], steps[index] = steps[index], steps[index - 1]
+    st.session_state.selected_steps = steps
+
+
+def move_step_down(index: int) -> None:
+    """選択済み手順を1つ下へ移動する"""
+    steps = st.session_state.selected_steps
+
+    if index >= len(steps) - 1:
+        return
+
+    steps[index], steps[index + 1] = steps[index + 1], steps[index]
+    st.session_state.selected_steps = steps
 
 def build_template_json_data() -> Dict[str, Any]:
     """
@@ -662,6 +681,42 @@ if st.session_state.selected_steps:
             new_selected_steps.append(step)
 
     st.session_state.selected_steps = new_selected_steps
+
+    # =========================
+    # 手順の並べ替え
+    # =========================
+    if st.session_state.selected_steps:
+        st.markdown("### 手順の並べ替え")
+        st.caption("追加した手順や標準手順の順番を変更できます。Excel出力もこの順番になります。")
+
+        for idx, step in enumerate(st.session_state.selected_steps):
+            col_no, col_step, col_up, col_down = st.columns([0.5, 5, 1, 1])
+
+            with col_no:
+                st.write(idx + 1)
+
+            with col_step:
+                st.write(step)
+
+            with col_up:
+                if st.button(
+                    "上へ",
+                    key=f"move_up_{idx}_{step}",
+                    use_container_width=True,
+                    disabled=(idx == 0),
+                ):
+                    move_step_up(idx)
+                    st.rerun()
+
+            with col_down:
+                if st.button(
+                    "下へ",
+                    key=f"move_down_{idx}_{step}",
+                    use_container_width=True,
+                    disabled=(idx == len(st.session_state.selected_steps) - 1),
+                ):
+                    move_step_down(idx)
+                    st.rerun()
 
     # step_details に存在しない手順があれば追加
     for step in st.session_state.selected_steps:
