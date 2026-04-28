@@ -664,22 +664,24 @@ if st.session_state.selected_steps:
 
     st.caption("不要な手順はチェックを外してください。")
 
-    all_step_options = template_steps + [
-        x for x in st.session_state.selected_steps if x not in template_steps
+    # 現在の選択順を優先する
+    # これにより「上へ」「下へ」で並べ替えた順番を維持する
+    all_step_options = st.session_state.selected_steps + [
+        x for x in template_steps if x not in st.session_state.selected_steps
     ]
-
+    
     new_selected_steps = []
-
+    
     for idx, step in enumerate(all_step_options, start=1):
         checked = step in st.session_state.selected_steps
-
+    
         if st.checkbox(
             f"{idx}. {step}",
             value=checked,
-            key=f"step_select_{idx}_{step}",
+            key=f"step_select_{safe_filename(step)}",
         ):
             new_selected_steps.append(step)
-
+    
     st.session_state.selected_steps = new_selected_steps
 
     # =========================
@@ -701,7 +703,7 @@ if st.session_state.selected_steps:
             with col_up:
                 if st.button(
                     "上へ",
-                    key=f"move_up_{idx}_{step}",
+                    key=f"move_up_{idx}_{safe_filename(step)}",
                     use_container_width=True,
                     disabled=(idx == 0),
                 ):
@@ -711,7 +713,7 @@ if st.session_state.selected_steps:
             with col_down:
                 if st.button(
                     "下へ",
-                    key=f"move_down_{idx}_{step}",
+                    key=f"move_down_{idx}_{safe_filename(step)}",
                     use_container_width=True,
                     disabled=(idx == len(st.session_state.selected_steps) - 1),
                 ):
