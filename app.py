@@ -374,3 +374,189 @@ init_session_state()
 def safe_value(value: str) -> str:
     value = str(value).strip()
     return value if value else "未設定"
+
+# =========================
+# 画面UI
+# =========================
+
+st.title("作業手順書作成アプリ")
+st.caption("工程を選び、写真と注意点を追加するだけで、Excel作業手順書のたたき台を作成します。")
+
+st.info("分かる範囲で入力してください。未入力でも作成できます。")
+
+with st.expander("基本情報", expanded=True):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.session_state.manual_title = st.text_input(
+            "手順書名",
+            value=st.session_state.manual_title,
+            placeholder="例：製品A マシニング加工手順",
+        )
+
+        process_options = list(PROCESS_TEMPLATES.keys())
+        st.session_state.process_type = st.selectbox(
+            "工程分類",
+            options=process_options,
+            index=process_options.index(st.session_state.process_type)
+            if st.session_state.process_type in process_options
+            else 0,
+        )
+
+        st.session_state.equipment_name = st.text_input(
+            "対象設備",
+            value=st.session_state.equipment_name,
+            placeholder="例：マシニングセンタ1号機",
+        )
+
+        st.session_state.product_name = st.text_input(
+            "製品名",
+            value=st.session_state.product_name,
+            placeholder="例：ブラケットA",
+        )
+
+        st.session_state.part_number = st.text_input(
+            "品番",
+            value=st.session_state.part_number,
+            placeholder="例：ABC-123",
+        )
+
+    with col2:
+        st.session_state.drawing_number = st.text_input(
+            "図面番号",
+            value=st.session_state.drawing_number,
+            placeholder="例：D-4567",
+        )
+
+        st.session_state.program_number = st.text_input(
+            "加工プログラム番号",
+            value=st.session_state.program_number,
+            placeholder="例：O1234",
+        )
+
+        st.session_state.jig_name = st.text_input(
+            "使用治具",
+            value=st.session_state.jig_name,
+            placeholder="例：JIG-01",
+        )
+
+        st.session_state.tool_name = st.text_input(
+            "使用工具",
+            value=st.session_state.tool_name,
+            placeholder="例：T01, T02, ノギス",
+        )
+
+        st.session_state.author = st.text_input(
+            "作成者",
+            value=st.session_state.author,
+            placeholder="例：山田太郎",
+        )
+
+        st.session_state.revision = st.text_input(
+            "改訂番号",
+            value=st.session_state.revision,
+            placeholder="例：Rev.0",
+        )
+
+st.markdown("---")
+st.subheader("1. 標準手順テンプレートの選択")
+
+template_steps = PROCESS_TEMPLATES.get(
+    st.session_state.process_type,
+    PROCESS_TEMPLATES["汎用テンプレート"],
+)
+
+col_load1, col_load2 = st.columns([1, 2])
+
+with col_load1:
+    if st.button("テンプレートを読込", use_container_width=True):
+        st.session_state.selected_steps = template_steps.copy()
+
+        # 各手順の詳細情報を初期化
+        st.session_state.step_details = {}
+        for step in st.session_state.selected_steps:
+            st.session_state.step_details[step] = {
+                "point": [],
+                "caution": [],
+                "check": [],
+                "free_point": "",
+                "free_caution": "",
+                "free_check": "",
+                "image": None,
+                "image_name": "",
+            }
+
+        st.success("テンプレートを読み込みました。")
+
+with col_load2:
+    st.caption("工程分類を選んでから「テンプレートを読込」を押してください。不要な手順は後で外せます。")
+
+if st.session_state.selected_steps:
+    st.markdown("---")
+    st.subheader("2. 使用する手順を選択")
+
+    selected = st.multiselect(
+        "作業手順書に入れる手順を選択してください",
+        options=template_steps + [
+            x for x in st.session_state.selected_steps if x not in template_steps
+        ],
+        default=st.session_state.selected_steps,
+    )
+
+    # 選択状態を反映
+    st.session_state.selected_steps = selected
+
+    # step_details に存在しない手順があれば追加
+    for step in st.session_state.selected_steps:
+        if step not in st.session_state.step_details:
+            st.session_state.step_details[step] = {
+                "point": [],
+                "caution": [],
+                "check": [],
+                "free_point": "",
+                "free_caution": "",
+                "free_check": "",
+                "image": None,
+                "image_name": "",
+            }
+
+else:
+    st.warning("まず工程分類を選び、「テンプレートを読込」を押してください。")
+
+st.markdown("### 手順を追加")
+
+add_col1, add_col2 = st.columns([3, 1])
+
+with add_col1:
+    st.session_state.extra_step_input = st.text_input(
+        "候補にない手順を追加",
+        value=st.session_state.extra_step_input,
+        placeholder="例：加工前にエアブローで切粉を除去する",
+    )
+
+with add_col2:
+    st.write("")
+    st.write("")
+    if st.button("追加", use_container_width=True):
+        new_step = st.session_state.extra_step_input.strip()
+
+        if new_step:
+            if new_step not in st.session_state.selected_steps:
+                st.session_state.selected_steps.append(new_step)
+                st.session_state.step_details[new_step] = {
+                    "point": [],
+                    "caution": [],
+                    "check": [],
+                    "free_point": "",
+                    "free_caution": "",
+                    "free_check": "",
+                    "image": None,
+                    "image_name": "",
+                }
+                st.session_state.extra_step_input = ""
+                st.success("手順を追加しました。")
+                st.rerun()
+            else:
+                st.info("すでに追加されています。")
+        else:
+            st.warning("追加する手順を入力してください。")
