@@ -724,21 +724,58 @@ def create_excel_bytes() -> bytes:
 
     # 基本情報
     info_rows = [
-        ("工程分類", safe_value(st.session_state.process_type), "対象設備", safe_value(st.session_state.equipment_name)),
+        ("工程", safe_value(st.session_state.process_type), "対象設備", safe_value(st.session_state.equipment_name)),
         ("製品名", safe_value(st.session_state.product_name), "品番", safe_value(st.session_state.part_number)),
         ("図面番号", safe_value(st.session_state.drawing_number), "プログラム番号", safe_value(st.session_state.program_number)),
         ("使用治具", safe_value(st.session_state.jig_name), "使用工具", safe_value(st.session_state.tool_name)),
         ("作成者", safe_value(st.session_state.author), "改訂番号", safe_value(st.session_state.revision)),
         ("作成日", datetime.now().strftime("%Y-%m-%d"), "承認", ""),
     ]
-
+    
     start_row = 3
+    
     for idx, (k1, v1, k2, v2) in enumerate(info_rows, start=start_row):
-        add_cell(ws, idx, 1, k1, fill=thin_gray_fill, font=Font(bold=True), align=center_align)
-        add_cell(ws, idx, 2, v1, align=left_align)
-        add_cell(ws, idx, 3, k2, fill=thin_gray_fill, font=Font(bold=True), align=center_align)
-        add_cell(ws, idx, 4, v2, align=left_align)
-        ws.merge_cells(start_row=idx, start_column=4, end_row=idx, end_column=6)
+        # 左側：項目名 A:B
+        ws.merge_cells(start_row=idx, start_column=1, end_row=idx, end_column=2)
+        add_cell(
+            ws,
+            idx,
+            1,
+            k1,
+            fill=thin_gray_fill,
+            font=Font(bold=True),
+            align=center_align,
+        )
+    
+        # 左側：値 C
+        add_cell(
+            ws,
+            idx,
+            3,
+            v1,
+            align=left_align,
+        )
+    
+        # 右側：項目名 D
+        add_cell(
+            ws,
+            idx,
+            4,
+            k2,
+            fill=thin_gray_fill,
+            font=Font(bold=True),
+            align=center_align,
+        )
+    
+        # 右側：値 E:F
+        ws.merge_cells(start_row=idx, start_column=5, end_row=idx, end_column=6)
+        add_cell(
+            ws,
+            idx,
+            5,
+            v2,
+            align=left_align,
+        )
 
     # 手順表ヘッダー
     header_row = 10
