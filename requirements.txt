@@ -1,5 +1,4 @@
 streamlit
-pandas<3
-matplotlib
+pandas
 openpyxl
-openai
+pillow
