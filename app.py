@@ -889,6 +889,34 @@ def create_excel_bytes() -> bytes:
     wb = Workbook()
 
     # =========================
+    # 罫線スタイル
+    # =========================
+    thin_side = Side(style="thin", color="000000")
+    medium_side = Side(style="medium", color="000000")
+    thick_side = Side(style="thick", color="000000")
+
+    def apply_box_border(ws, start_row, start_col, end_row, end_col, outer_side, inner_side):
+        """
+        指定範囲に罫線を付ける。
+        外枠は outer_side、内側は inner_side。
+        """
+        for r in range(start_row, end_row + 1):
+            for c in range(start_col, end_col + 1):
+                cell = ws.cell(row=r, column=c)
+
+                left = outer_side if c == start_col else inner_side
+                right = outer_side if c == end_col else inner_side
+                top = outer_side if r == start_row else inner_side
+                bottom = outer_side if r == end_row else inner_side
+
+                cell.border = Border(
+                    left=left,
+                    right=right,
+                    top=top,
+                    bottom=bottom,
+                )
+
+    # =========================
     # シート1：作業手順書
     # =========================
     ws = wb.active
@@ -1045,8 +1073,61 @@ def create_excel_bytes() -> bytes:
 
         row += 1
 
+    # =========================
+    # 罫線の見栄え調整
+    # 外枠：太線
+    # 見出し・大区切り：中太線
+    # 内部：細線
+    # =========================
+
+    last_row = max(row - 1, header_row + 1)
+
+    # タイトル行：外枠太線
+    apply_box_border(
+        ws,
+        start_row=1,
+        start_col=1,
+        end_row=1,
+        end_col=6,
+        outer_side=thick_side,
+        inner_side=thin_side,
+    )
+
+    # 基本情報ブロック：外枠太線、内部細線
+    apply_box_border(
+        ws,
+        start_row=3,
+        start_col=1,
+        end_row=8,
+        end_col=6,
+        outer_side=thick_side,
+        inner_side=thin_side,
+    )
+
+    # 手順表全体：外枠太線、内部細線
+    apply_box_border(
+        ws,
+        start_row=header_row,
+        start_col=1,
+        end_row=last_row,
+        end_col=6,
+        outer_side=thick_side,
+        inner_side=thin_side,
+    )
+
+    # 手順表ヘッダー行：中太線
+    apply_box_border(
+        ws,
+        start_row=header_row,
+        start_col=1,
+        end_row=header_row,
+        end_col=6,
+        outer_side=medium_side,
+        inner_side=medium_side,
+    )
+    
     # 印刷範囲
-    ws.print_area = f"A1:F{max(row - 1, header_row + 1)}"
+    ws.print_area = f"A1:F{last_row}"
 
     # =========================
     # シート2：写真集
