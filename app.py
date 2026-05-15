@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
-
+from inject_ga import inject_ga
 
 st.set_page_config(
     page_title="作業手順書作成アプリ",
@@ -369,7 +369,7 @@ def init_session_state() -> None:
         if key not in st.session_state:
             st.session_state[key] = value
 
-
+inject_ga()
 init_session_state()
 
 
