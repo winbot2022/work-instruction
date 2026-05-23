@@ -512,6 +512,32 @@ def apply_template_json_data(data: Dict[str, Any]) -> None:
         }
 
     st.session_state.step_details = new_step_details
+    
+def checkbox_multi_select(label: str, options: List[str], selected: List[str], key_prefix: str) -> List[str]:
+    """
+    タブレット・スマホ向けの複数選択UI。
+    st.multiselect の代わりに checkbox を使う。
+    文字入力キーボードが出ない。
+    """
+    st.markdown(f"**{label}**")
+
+    selected = selected or []
+    new_selected = []
+
+    for i, option in enumerate(options):
+        checkbox_key = f"{key_prefix}_{i}_{safe_filename(option)}"
+
+        checked = st.checkbox(
+            option,
+            value=option in selected,
+            key=checkbox_key,
+        )
+
+        if checked:
+            new_selected.append(option)
+
+    return new_selected
+
 
 # =========================
 # 画面UI
