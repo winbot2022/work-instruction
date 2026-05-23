@@ -587,12 +587,17 @@ with st.expander("定型フォームの保存・読込", expanded=False):
         )
 
         process_options = list(PROCESS_TEMPLATES.keys())
-        st.session_state.process_type = st.selectbox(
+
+        current_process_index = (
+            process_options.index(st.session_state.process_type)
+            if st.session_state.process_type in process_options
+            else 0
+        )
+        
+        st.session_state.process_type = st.radio(
             "工程分類",
             options=process_options,
-            index=process_options.index(st.session_state.process_type)
-            if st.session_state.process_type in process_options
-            else 0,
+            index=current_process_index,
         )
 
         st.session_state.equipment_name = st.text_input(
@@ -842,12 +847,13 @@ if st.session_state.selected_steps:
                 except Exception:
                     st.warning("写真のプレビューに失敗しました。")
 
-            detail["point"] = st.multiselect(
-                "ポイント（選択）",
-                options=POINT_OPTIONS,
-                default=detail.get("point", []),
-                key=f"point_{idx}_{step}",
-            )
+            with st.expander("ポイント（選択）", expanded=False):
+                detail["point"] = checkbox_multi_select(
+                    label="該当するポイントを選択してください",
+                    options=POINT_OPTIONS,
+                    selected=detail.get("point", []),
+                    key_prefix=f"point_{idx}_{safe_filename(step)}",
+                )
 
             detail["free_point"] = st.text_input(
                 "ポイント（自由入力）",
@@ -856,12 +862,13 @@ if st.session_state.selected_steps:
                 key=f"free_point_{idx}_{step}",
             )
 
-            detail["caution"] = st.multiselect(
-                "注意事項（選択）",
-                options=CAUTION_OPTIONS,
-                default=detail.get("caution", []),
-                key=f"caution_{idx}_{step}",
-            )
+            with st.expander("注意事項（選択）", expanded=False):
+                detail["caution"] = checkbox_multi_select(
+                    label="該当する注意事項を選択してください",
+                    options=CAUTION_OPTIONS,
+                    selected=detail.get("caution", []),
+                    key_prefix=f"caution_{idx}_{safe_filename(step)}",
+                )
 
             detail["free_caution"] = st.text_input(
                 "注意事項（自由入力）",
@@ -870,12 +877,13 @@ if st.session_state.selected_steps:
                 key=f"free_caution_{idx}_{step}",
             )
 
-            detail["check"] = st.multiselect(
-                "確認項目（選択）",
-                options=CHECK_OPTIONS,
-                default=detail.get("check", []),
-                key=f"check_{idx}_{step}",
-            )
+            with st.expander("確認項目（選択）", expanded=False):
+                detail["check"] = checkbox_multi_select(
+                    label="該当する確認項目を選択してください",
+                    options=CHECK_OPTIONS,
+                    selected=detail.get("check", []),
+                    key_prefix=f"check_{idx}_{safe_filename(step)}",
+                )
 
             detail["free_check"] = st.text_input(
                 "確認項目（自由入力）",
