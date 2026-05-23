@@ -513,28 +513,40 @@ def apply_template_json_data(data: Dict[str, Any]) -> None:
 
     st.session_state.step_details = new_step_details
     
-def checkbox_multi_select(label: str, options: List[str], selected: List[str], key_prefix: str) -> List[str]:
+def checkbox_multi_select(
+    label: str,
+    options: List[str],
+    selected: List[str],
+    key_prefix: str,
+    cols_per_row: int = 2,
+) -> List[str]:
     """
     タブレット・スマホ向けの複数選択UI。
     st.multiselect の代わりに checkbox を使う。
     文字入力キーボードが出ない。
+    cols_per_row で列数を指定できる。
     """
     st.markdown(f"**{label}**")
 
     selected = selected or []
     new_selected = []
 
-    for i, option in enumerate(options):
-        checkbox_key = f"{key_prefix}_{i}_{safe_filename(option)}"
+    for start in range(0, len(options), cols_per_row):
+        row_options = options[start:start + cols_per_row]
+        cols = st.columns(cols_per_row)
 
-        checked = st.checkbox(
-            option,
-            value=option in selected,
-            key=checkbox_key,
-        )
+        for col_idx, option in enumerate(row_options):
+            with cols[col_idx]:
+                checkbox_key = f"{key_prefix}_{start + col_idx}_{safe_filename(option)}"
 
-        if checked:
-            new_selected.append(option)
+                checked = st.checkbox(
+                    option,
+                    value=option in selected,
+                    key=checkbox_key,
+                )
+
+                if checked:
+                    new_selected.append(option)
 
     return new_selected
 
